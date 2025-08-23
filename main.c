@@ -242,7 +242,7 @@ static void startFall(void) {
             if (board[y][x] != -1) {
                 board[write][x] = board[y][x];
                 if (write != y)
-                    fallOffset[write][x] = (float)(y - write) * TILE_SIZE;
+                    fallOffset[write][x] = (float)(write - y) * TILE_SIZE;
                 else
                     fallOffset[write][x] = 0.f;
                 write--;
