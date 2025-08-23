@@ -23,10 +23,6 @@ static unsigned char sound_wav[] = {
 };
 static unsigned int sound_wav_len = sizeof(sound_wav);
 
-/* Placeholder TTF font (empty - replace with real font via xxd -i) */
-static unsigned char font_ttf[] = {0x00};
-static unsigned int font_ttf_len = sizeof(font_ttf);
-
 /* Loading helpers */
 
 static Mix_Chunk* loadSoundFromMemory(const unsigned char* data, unsigned int len) {
@@ -43,12 +39,6 @@ static Mix_Music* loadMusicFromMemory(const unsigned char* data, unsigned int le
     return m;
 }
 
-static TTF_Font* loadFontFromMemory(const unsigned char* data, unsigned int len, int ptsize) {
-    SDL_RWops* rw = SDL_RWFromConstMem(data, len);
-    if (!rw) return NULL;
-    TTF_Font* f = TTF_OpenFontRW(rw, 1, ptsize);
-    return f;
-}
 
 static SDL_Texture* createCandyTexture(SDL_Renderer* renderer) {
     SDL_Surface* surf = SDL_CreateRGBSurfaceWithFormat(0, TILE_SIZE, TILE_SIZE, 32, SDL_PIXELFORMAT_RGBA32);
@@ -437,7 +427,10 @@ int main(int argc, char** argv) {
     sndLand = loadSoundFromMemory(sound_wav, sound_wav_len);
     music = loadMusicFromMemory(sound_wav, sound_wav_len);
     if (music) Mix_PlayMusic(music, -1);
-    font = loadFontFromMemory(font_ttf, font_ttf_len, 24);
+    font = TTF_OpenFont("DejaVuSans.ttf", 24);
+    if (!font) {
+        fprintf(stderr, "Failed to load font: %s\n", TTF_GetError());
+    }
 
     initBoard();
 
