@@ -248,9 +248,10 @@ static void startFall(void) {
                 write--;
             }
         }
+        int newCount = write + 1;
         while (write >= 0) {
             board[write][x] = rand() % CANDY_TYPES;
-            fallOffset[write][x] = (float)(write + 1) * TILE_SIZE;
+            fallOffset[write][x] = (float)newCount * TILE_SIZE;
             write--;
         }
     }
