@@ -11,63 +11,39 @@
 
 /* Game constants */
 #define GRID_SIZE 8
-#define CANDY_TYPES 6
+#define CANDY_TYPES 10
 #define TILE_SIZE 64
 #define WINDOW_WIDTH (GRID_SIZE * TILE_SIZE)
 #define WINDOW_HEIGHT (GRID_SIZE * TILE_SIZE + 80)
 
+
 /* Audio is generated procedurally at runtime */
 
+static const char* candyFiles[CANDY_TYPES] = {
+    "icon-apple.jpeg",
+    "icon-banana.jpeg",
+    "icon-cherry.jpeg",
+    "icon-grape.jpeg",
+    "icon-lemon.jpeg",
+    "icon-orange.jpeg",
+    "icon-pear.jpeg",
+    "icon-pineapple.jpeg",
+    "icon-strawberry.jpeg",
+    "icon-watermelon.jpeg"
+};
 
-static SDL_Texture* createCandyTexture(SDL_Renderer* renderer) {
-    SDL_Surface* surf = SDL_CreateRGBSurfaceWithFormat(0, TILE_SIZE, TILE_SIZE, 32, SDL_PIXELFORMAT_RGBA32);
-    if (!surf) return NULL;
-    SDL_LockSurface(surf);
-    Uint32* pixels = (Uint32*)surf->pixels;
-    int pitch = surf->pitch / 4;
-    int cx = TILE_SIZE / 2;
-    int cy = TILE_SIZE / 2;
-    int radius = TILE_SIZE / 2 - 2;
-    int radiusSq = radius * radius;
-    int highlightCx = cx - radius / 3;
-    int highlightCy = cy - radius / 3;
-    int highlightRadius = radius / 3;
-    int highlightRadiusSq = highlightRadius * highlightRadius;
-    for (int y = 0; y < TILE_SIZE; ++y) {
-        for (int x = 0; x < TILE_SIZE; ++x) {
-            int dx = x - cx;
-            int dy = y - cy;
-            int distSq = dx*dx + dy*dy;
-            if (distSq <= radiusSq) {
-                float t = (float)distSq / (float)radiusSq;
-                Uint8 intensity = (Uint8)(200 + 55 * (1.f - t));
-                int hdx = x - highlightCx;
-                int hdy = y - highlightCy;
-                if (hdx*hdx + hdy*hdy <= highlightRadiusSq) {
-                    intensity = 255;
-                }
-                pixels[y * pitch + x] = SDL_MapRGBA(surf->format, intensity, intensity, intensity, 255);
-            } else {
-                pixels[y * pitch + x] = SDL_MapRGBA(surf->format, 0, 0, 0, 0);
-            }
+static SDL_Texture* candyTextures[CANDY_TYPES] = {0};
+
+static int loadCandyTextures(SDL_Renderer* renderer) {
+    for (int i = 0; i < CANDY_TYPES; ++i) {
+        candyTextures[i] = IMG_LoadTexture(renderer, candyFiles[i]);
+        if (!candyTextures[i]) {
+            fprintf(stderr, "Failed to load %s: %s\n", candyFiles[i], IMG_GetError());
+            return 0;
         }
     }
-    SDL_UnlockSurface(surf);
-    SDL_Texture* tex = SDL_CreateTextureFromSurface(renderer, surf);
-    SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
-    SDL_FreeSurface(surf);
-    return tex;
+    return 1;
 }
-
-/* Colors for candies */
-static SDL_Color candyColors[CANDY_TYPES] = {
-    {255, 0, 0, 255},
-    {0, 255, 0, 255},
-    {0, 0, 255, 255},
-    {255, 255, 0, 255},
-    {255, 0, 255, 255},
-    {0, 255, 255, 255}
-};
 
 /* Game state */
 typedef enum { STATE_IDLE, STATE_SWAP, STATE_REMOVE, STATE_FALL, STATE_GAMEOVER } GameState;
@@ -87,7 +63,6 @@ static int removeCount = 0;
 static int score = 0;
 static TTF_Font* font = NULL;
 
-static SDL_Texture* candyTexture = NULL;
 static Mix_Chunk* sndSwap = NULL;
 static Mix_Chunk* sndInvalid = NULL;
 static Mix_Chunk* sndLand = NULL;
@@ -308,12 +283,9 @@ static void renderBoard(SDL_Renderer* renderer) {
                     dst.y = (int)((swapY2 + (swapY1 - swapY2) * swapProgress) * TILE_SIZE);
                 }
             }
-            SDL_SetTextureColorMod(candyTexture,
-                                   candyColors[board[y][x]].r,
-                                   candyColors[board[y][x]].g,
-                                   candyColors[board[y][x]].b);
-            SDL_SetTextureAlphaMod(candyTexture, (Uint8)(alpha * 255));
-            SDL_RenderCopy(renderer, candyTexture, NULL, &dst);
+            SDL_Texture* tex = candyTextures[board[y][x]];
+            SDL_SetTextureAlphaMod(tex, (Uint8)(alpha * 255));
+            SDL_RenderCopy(renderer, tex, NULL, &dst);
         }
     }
 
@@ -438,7 +410,8 @@ int main(int argc, char** argv) {
         fprintf(stderr, "SDL_Init failed: %s\n", SDL_GetError());
         return 1;
     }
-    if (!(IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG)) {
+    int imgFlags = IMG_INIT_PNG | IMG_INIT_JPG;
+    if ((IMG_Init(imgFlags) & imgFlags) != imgFlags) {
         fprintf(stderr, "IMG_Init failed: %s\n", IMG_GetError());
     }
     if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0) {
@@ -461,7 +434,9 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    candyTexture = createCandyTexture(renderer);
+    if (!loadCandyTextures(renderer)) {
+        fprintf(stderr, "Failed to load candy textures.\n");
+    }
     sndSwap = generateTone(600, 100);
     sndInvalid = generateTone(200, 200);
     sndLand = generateTone(400, 100);
@@ -494,7 +469,9 @@ int main(int argc, char** argv) {
     if (sndSwap) Mix_FreeChunk(sndSwap);
     if (sndInvalid) Mix_FreeChunk(sndInvalid);
     if (sndLand) Mix_FreeChunk(sndLand);
-    if (candyTexture) SDL_DestroyTexture(candyTexture);
+    for (int i = 0; i < CANDY_TYPES; ++i) {
+        if (candyTextures[i]) SDL_DestroyTexture(candyTextures[i]);
+    }
     if (font) TTF_CloseFont(font);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
