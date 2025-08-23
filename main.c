@@ -91,7 +91,7 @@ static SDL_Color candyColors[CANDY_TYPES] = {
 };
 
 /* Game state */
-typedef enum { STATE_IDLE, STATE_SWAP, STATE_REMOVE, STATE_FALL } GameState;
+typedef enum { STATE_IDLE, STATE_SWAP, STATE_REMOVE, STATE_FALL, STATE_GAMEOVER } GameState;
 static GameState gameState = STATE_IDLE;
 
 static int board[GRID_SIZE][GRID_SIZE];
@@ -317,12 +317,35 @@ static void renderBoard(SDL_Renderer* renderer) {
         }
     }
     renderScore(renderer);
+    if (gameState == STATE_GAMEOVER) {
+        const char* msg = "No moves! Press R to restart";
+        if (font) {
+            SDL_Color white = {255,255,255,255};
+            SDL_Surface* surf = TTF_RenderText_Blended(font, msg, white);
+            if (surf) {
+                SDL_Texture* tex = SDL_CreateTextureFromSurface(renderer, surf);
+                SDL_Rect dst = { (WINDOW_WIDTH - surf->w) / 2,
+                                 (WINDOW_HEIGHT - 80 - surf->h) / 2,
+                                 surf->w, surf->h };
+                SDL_RenderCopy(renderer, tex, NULL, &dst);
+                SDL_DestroyTexture(tex);
+                SDL_FreeSurface(surf);
+            }
+        }
+    }
     SDL_RenderPresent(renderer);
 }
 
 static int selectedX = -1, selectedY = -1;
 
 static void handleInput(SDL_Event* e) {
+    if (gameState == STATE_GAMEOVER && e->type == SDL_KEYDOWN && e->key.keysym.sym == SDLK_r) {
+        score = 0;
+        selectedX = selectedY = -1;
+        initBoard();
+        gameState = STATE_IDLE;
+        return;
+    }
     if (e->type == SDL_MOUSEBUTTONDOWN && gameState == STATE_IDLE) {
         int x = e->button.x / TILE_SIZE;
         int y = e->button.y / TILE_SIZE;
@@ -384,8 +407,14 @@ static void updateGame(float dt) {
             if (sndLand) Mix_PlayChannel(-1, sndLand, 0);
             removeCount = findMatches();
             if (removeCount > 0) startRemove();
+            else if (!hasMove()) gameState = STATE_GAMEOVER;
             else gameState = STATE_IDLE;
         }
+        break;
+    case STATE_IDLE:
+        if (!hasMove()) gameState = STATE_GAMEOVER;
+        break;
+    case STATE_GAMEOVER:
         break;
     default:
         break;

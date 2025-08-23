@@ -6,6 +6,7 @@ Simple match-3 puzzle game built with SDL2.
 
 * **Select candy** – left-click a candy to highlight it.
 * **Swap** – click a highlighted candy's horizontally or vertically adjacent neighbor to attempt a swap.
+* **Restart** – press **R** when no moves remain to start a new game.
 
 ## Rules
 
@@ -13,6 +14,7 @@ Simple match-3 puzzle game built with SDL2.
 * Each removed candy is worth **10 points**.
 * Candies above fall into empty spaces and new candies spawn from the top to refill the grid.
 * The game continues as long as there are valid moves available.
+* When no moves remain, the game ends and you can restart.
 
 ## Building
 
