@@ -100,19 +100,23 @@ static void swapCandies(int x1, int y1, int x2, int y2) {
     board[y2][x2] = tmp;
 }
 
+static int hasMove(void);
+
 static void initBoard(void) {
     srand((unsigned int)time(NULL));
-    for (int y = 0; y < GRID_SIZE; ++y) {
-        for (int x = 0; x < GRID_SIZE; ++x) {
-            int c;
-            do {
-                c = rand() % CANDY_TYPES;
-                board[y][x] = c;
-            } while ((x >= 2 && board[y][x-1] == c && board[y][x-2] == c) ||
-                     (y >= 2 && board[y-1][x] == c && board[y-2][x] == c));
-            fallOffset[y][x] = 0.f;
+    do {
+        for (int y = 0; y < GRID_SIZE; ++y) {
+            for (int x = 0; x < GRID_SIZE; ++x) {
+                int c;
+                do {
+                    c = rand() % CANDY_TYPES;
+                    board[y][x] = c;
+                } while ((x >= 2 && board[y][x-1] == c && board[y][x-2] == c) ||
+                         (y >= 2 && board[y-1][x] == c && board[y-2][x] == c));
+                fallOffset[y][x] = 0.f;
+            }
         }
-    }
+    } while (!hasMove());
 }
 
 static int findMatches(void) {
@@ -161,6 +165,26 @@ static int findMatches(void) {
         }
     }
     return count;
+}
+
+static int hasMove(void) {
+    for (int y = 0; y < GRID_SIZE; ++y) {
+        for (int x = 0; x < GRID_SIZE; ++x) {
+            if (x < GRID_SIZE - 1) {
+                swapCandies(x, y, x + 1, y);
+                int m = findMatches();
+                swapCandies(x, y, x + 1, y);
+                if (m > 0) return 1;
+            }
+            if (y < GRID_SIZE - 1) {
+                swapCandies(x, y, x, y + 1);
+                int m = findMatches();
+                swapCandies(x, y, x, y + 1);
+                if (m > 0) return 1;
+            }
+        }
+    }
+    return 0;
 }
 
 static void startRemove(void) {
