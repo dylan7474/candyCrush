@@ -2,6 +2,7 @@
 
 Simple match-3 puzzle game built with SDL2.
 Now includes procedurally generated sound effects for swapping, invalid moves, landing candies, and a looping background tone.
+The board renders grid lines for clarity and the currently selected candy is outlined to make swaps easier.
 
 ## Controls
 

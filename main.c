@@ -92,6 +92,7 @@ static Mix_Chunk* sndSwap = NULL;
 static Mix_Chunk* sndInvalid = NULL;
 static Mix_Chunk* sndLand = NULL;
 static Mix_Chunk* sndMusic = NULL;
+static int selectedX = -1, selectedY = -1;
 
 static Mix_Chunk* generateTone(int freq, int ms) {
     int sampleRate = 44100;
@@ -315,6 +316,19 @@ static void renderBoard(SDL_Renderer* renderer) {
             SDL_RenderCopy(renderer, candyTexture, NULL, &dst);
         }
     }
+
+    SDL_SetRenderDrawColor(renderer, 40, 40, 40, 255);
+    for (int i = 0; i <= GRID_SIZE; ++i) {
+        SDL_RenderDrawLine(renderer, i * TILE_SIZE, 0, i * TILE_SIZE, GRID_SIZE * TILE_SIZE);
+        SDL_RenderDrawLine(renderer, 0, i * TILE_SIZE, GRID_SIZE * TILE_SIZE, i * TILE_SIZE);
+    }
+
+    if (selectedX >= 0 && selectedY >= 0 && gameState == STATE_IDLE) {
+        SDL_Rect sel = {selectedX * TILE_SIZE, selectedY * TILE_SIZE, TILE_SIZE, TILE_SIZE};
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+        SDL_RenderDrawRect(renderer, &sel);
+    }
+
     renderScore(renderer);
     if (gameState == STATE_GAMEOVER) {
         const char* msg = "No moves! Press R to restart";
@@ -334,8 +348,6 @@ static void renderBoard(SDL_Renderer* renderer) {
     }
     SDL_RenderPresent(renderer);
 }
-
-static int selectedX = -1, selectedY = -1;
 
 static void handleInput(SDL_Event* e) {
     if (gameState == STATE_GAMEOVER && e->type == SDL_KEYDOWN && e->key.keysym.sym == SDLK_r) {
