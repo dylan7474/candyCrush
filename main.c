@@ -8,16 +8,6 @@
 #include <string.h>
 
 /* Embedded asset placeholders generated via xxd -i */
-/* 1x1 PNG used as base texture for candies */
-static unsigned char candy_png[] = {
-    0x89,0x50,0x4E,0x47,0x0D,0x0A,0x1A,0x0A,0x00,0x00,0x00,0x0D,0x49,0x48,0x44,0x52,
-    0x00,0x00,0x00,0x01,0x00,0x00,0x00,0x01,0x08,0x06,0x00,0x00,0x00,0x1F,0x15,0xC4,
-    0x89,0x00,0x00,0x00,0x0A,0x49,0x44,0x41,0x54,0x78,0x9C,0x63,0x00,0x01,0x00,0x00,
-    0x05,0x00,0x01,0x0D,0x0A,0x2D,0xB4,0x00,0x00,0x00,0x00,0x49,0x45,0x4E,0x44,0xAE,
-    0x42,0x60,0x82
-};
-static unsigned int candy_png_len = sizeof(candy_png);
-
 /* Silent WAV used for sound placeholders */
 static unsigned char sound_wav[] = {
     0x52,0x49,0x46,0x46,0x26,0x00,0x00,0x00,0x57,0x41,0x56,0x45,0x66,0x6D,0x74,0x20,
@@ -31,18 +21,6 @@ static unsigned char font_ttf[] = {0x00};
 static unsigned int font_ttf_len = sizeof(font_ttf);
 
 /* Loading helpers */
-static SDL_Texture* loadTextureFromMemory(SDL_Renderer* renderer,
-                                          const unsigned char* data,
-                                          unsigned int len) {
-    SDL_RWops* rw = SDL_RWFromConstMem(data, len);
-    if (!rw) return NULL;
-    SDL_Surface* surf = IMG_Load_RW(rw, 0);
-    SDL_FreeRW(rw);
-    if (!surf) return NULL;
-    SDL_Texture* tex = SDL_CreateTextureFromSurface(renderer, surf);
-    SDL_FreeSurface(surf);
-    return tex;
-}
 
 static Mix_Chunk* loadSoundFromMemory(const unsigned char* data, unsigned int len) {
     SDL_RWops* rw = SDL_RWFromConstMem(data, len);
@@ -63,6 +41,16 @@ static TTF_Font* loadFontFromMemory(const unsigned char* data, unsigned int len,
     if (!rw) return NULL;
     TTF_Font* f = TTF_OpenFontRW(rw, 1, ptsize);
     return f;
+}
+
+static SDL_Texture* createCandyTexture(SDL_Renderer* renderer) {
+    SDL_Surface* surf = SDL_CreateRGBSurfaceWithFormat(0, 1, 1, 32, SDL_PIXELFORMAT_RGBA32);
+    if (!surf) return NULL;
+    Uint32 pixel = SDL_MapRGBA(surf->format, 255, 255, 255, 255);
+    ((Uint32*)surf->pixels)[0] = pixel;
+    SDL_Texture* tex = SDL_CreateTextureFromSurface(renderer, surf);
+    SDL_FreeSurface(surf);
+    return tex;
 }
 
 /* Game constants */
@@ -255,6 +243,7 @@ static void renderScore(SDL_Renderer* renderer) {
 }
 
 static void renderBoard(SDL_Renderer* renderer) {
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
     for (int y = 0; y < GRID_SIZE; ++y) {
         for (int x = 0; x < GRID_SIZE; ++x) {
@@ -387,7 +376,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    candyTexture = loadTextureFromMemory(renderer, candy_png, candy_png_len);
+    candyTexture = createCandyTexture(renderer);
     sndSwap = loadSoundFromMemory(sound_wav, sound_wav_len);
     sndInvalid = loadSoundFromMemory(sound_wav, sound_wav_len);
     sndLand = loadSoundFromMemory(sound_wav, sound_wav_len);
