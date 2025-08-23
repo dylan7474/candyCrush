@@ -68,6 +68,7 @@ static Mix_Chunk* sndInvalid = NULL;
 static Mix_Chunk* sndLand = NULL;
 static Mix_Chunk* sndMusic = NULL;
 static int selectedX = -1, selectedY = -1;
+static int hintX = -1, hintY = -1;
 
 static Mix_Chunk* generateTone(int freq, int ms) {
     int sampleRate = 44100;
@@ -96,6 +97,7 @@ static void swapCandies(int x1, int y1, int x2, int y2) {
 }
 
 static int hasMove(void);
+static int findHint(int* hx, int* hy);
 
 static void initBoard(void) {
     srand((unsigned int)time(NULL));
@@ -176,6 +178,34 @@ static int hasMove(void) {
                 int m = findMatches();
                 swapCandies(x, y, x, y + 1);
                 if (m > 0) return 1;
+            }
+        }
+    }
+    return 0;
+}
+
+static int findHint(int* hx, int* hy) {
+    for (int y = 0; y < GRID_SIZE; ++y) {
+        for (int x = 0; x < GRID_SIZE; ++x) {
+            if (x < GRID_SIZE - 1) {
+                swapCandies(x, y, x + 1, y);
+                int m = findMatches();
+                swapCandies(x, y, x + 1, y);
+                if (m > 0) {
+                    if (hx) *hx = x;
+                    if (hy) *hy = y;
+                    return 1;
+                }
+            }
+            if (y < GRID_SIZE - 1) {
+                swapCandies(x, y, x, y + 1);
+                int m = findMatches();
+                swapCandies(x, y, x, y + 1);
+                if (m > 0) {
+                    if (hx) *hx = x;
+                    if (hy) *hy = y;
+                    return 1;
+                }
             }
         }
     }
@@ -301,6 +331,12 @@ static void renderBoard(SDL_Renderer* renderer) {
         SDL_RenderDrawRect(renderer, &sel);
     }
 
+    if (hintX >= 0 && hintY >= 0 && gameState == STATE_IDLE) {
+        SDL_Rect h = {hintX * TILE_SIZE, hintY * TILE_SIZE, TILE_SIZE, TILE_SIZE};
+        SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
+        SDL_RenderDrawRect(renderer, &h);
+    }
+
     renderScore(renderer);
     if (gameState == STATE_GAMEOVER) {
         const char* msg = "No moves! Press R to restart";
@@ -325,11 +361,18 @@ static void handleInput(SDL_Event* e) {
     if (gameState == STATE_GAMEOVER && e->type == SDL_KEYDOWN && e->key.keysym.sym == SDLK_r) {
         score = 0;
         selectedX = selectedY = -1;
+        hintX = hintY = -1;
         initBoard();
         gameState = STATE_IDLE;
         return;
     }
+    if (e->type == SDL_KEYDOWN && e->key.keysym.sym == SDLK_SPACE && gameState == STATE_IDLE) {
+        if (!findHint(&hintX, &hintY)) {
+            hintX = hintY = -1;
+        }
+    }
     if (e->type == SDL_MOUSEBUTTONDOWN && gameState == STATE_IDLE) {
+        hintX = hintY = -1;
         int x = e->button.x / TILE_SIZE;
         int y = e->button.y / TILE_SIZE;
         if (x >= 0 && x < GRID_SIZE && y >= 0 && y < GRID_SIZE) {
