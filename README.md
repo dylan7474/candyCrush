@@ -1,6 +1,7 @@
 # candyCrush
 
 Simple match-3 puzzle game built with SDL2.
+Now includes procedurally generated sound effects for swapping, invalid moves, landing candies, and a looping background tone.
 
 ## Controls
 
