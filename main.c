@@ -7,6 +7,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* Game constants */
+#define GRID_SIZE 8
+#define CANDY_TYPES 6
+#define TILE_SIZE 64
+#define WINDOW_WIDTH (GRID_SIZE * TILE_SIZE)
+#define WINDOW_HEIGHT (GRID_SIZE * TILE_SIZE + 80)
+
 /* Embedded asset placeholders generated via xxd -i */
 /* Silent WAV used for sound placeholders */
 static unsigned char sound_wav[] = {
@@ -44,21 +51,44 @@ static TTF_Font* loadFontFromMemory(const unsigned char* data, unsigned int len,
 }
 
 static SDL_Texture* createCandyTexture(SDL_Renderer* renderer) {
-    SDL_Surface* surf = SDL_CreateRGBSurfaceWithFormat(0, 1, 1, 32, SDL_PIXELFORMAT_RGBA32);
+    SDL_Surface* surf = SDL_CreateRGBSurfaceWithFormat(0, TILE_SIZE, TILE_SIZE, 32, SDL_PIXELFORMAT_RGBA32);
     if (!surf) return NULL;
-    Uint32 pixel = SDL_MapRGBA(surf->format, 255, 255, 255, 255);
-    ((Uint32*)surf->pixels)[0] = pixel;
+    SDL_LockSurface(surf);
+    Uint32* pixels = (Uint32*)surf->pixels;
+    int pitch = surf->pitch / 4;
+    int cx = TILE_SIZE / 2;
+    int cy = TILE_SIZE / 2;
+    int radius = TILE_SIZE / 2 - 2;
+    int radiusSq = radius * radius;
+    int highlightCx = cx - radius / 3;
+    int highlightCy = cy - radius / 3;
+    int highlightRadius = radius / 3;
+    int highlightRadiusSq = highlightRadius * highlightRadius;
+    for (int y = 0; y < TILE_SIZE; ++y) {
+        for (int x = 0; x < TILE_SIZE; ++x) {
+            int dx = x - cx;
+            int dy = y - cy;
+            int distSq = dx*dx + dy*dy;
+            if (distSq <= radiusSq) {
+                float t = (float)distSq / (float)radiusSq;
+                Uint8 intensity = (Uint8)(200 + 55 * (1.f - t));
+                int hdx = x - highlightCx;
+                int hdy = y - highlightCy;
+                if (hdx*hdx + hdy*hdy <= highlightRadiusSq) {
+                    intensity = 255;
+                }
+                pixels[y * pitch + x] = SDL_MapRGBA(surf->format, intensity, intensity, intensity, 255);
+            } else {
+                pixels[y * pitch + x] = SDL_MapRGBA(surf->format, 0, 0, 0, 0);
+            }
+        }
+    }
+    SDL_UnlockSurface(surf);
     SDL_Texture* tex = SDL_CreateTextureFromSurface(renderer, surf);
+    SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
     SDL_FreeSurface(surf);
     return tex;
 }
-
-/* Game constants */
-#define GRID_SIZE 8
-#define CANDY_TYPES 6
-#define TILE_SIZE 64
-#define WINDOW_WIDTH (GRID_SIZE * TILE_SIZE)
-#define WINDOW_HEIGHT (GRID_SIZE * TILE_SIZE + 80)
 
 /* Colors for candies */
 static SDL_Color candyColors[CANDY_TYPES] = {
