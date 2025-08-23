@@ -68,7 +68,8 @@ static Mix_Chunk* sndInvalid = NULL;
 static Mix_Chunk* sndLand = NULL;
 static Mix_Chunk* sndMusic = NULL;
 static int selectedX = -1, selectedY = -1;
-static int hintX = -1, hintY = -1;
+static int hintX1 = -1, hintY1 = -1;
+static int hintX2 = -1, hintY2 = -1;
 
 static Mix_Chunk* generateTone(int freq, int ms) {
     int sampleRate = 44100;
@@ -97,7 +98,7 @@ static void swapCandies(int x1, int y1, int x2, int y2) {
 }
 
 static int hasMove(void);
-static int findHint(int* hx, int* hy);
+static int findHint(int* hx1, int* hy1, int* hx2, int* hy2);
 
 static void initBoard(void) {
     srand((unsigned int)time(NULL));
@@ -184,16 +185,19 @@ static int hasMove(void) {
     return 0;
 }
 
-static int findHint(int* hx, int* hy) {
+static int findHint(int* hx1, int* hy1, int* hx2, int* hy2) {
     for (int y = 0; y < GRID_SIZE; ++y) {
         for (int x = 0; x < GRID_SIZE; ++x) {
             if (x < GRID_SIZE - 1) {
                 swapCandies(x, y, x + 1, y);
                 int m = findMatches();
                 swapCandies(x, y, x + 1, y);
+                memset(toRemove, 0, sizeof(toRemove));
                 if (m > 0) {
-                    if (hx) *hx = x;
-                    if (hy) *hy = y;
+                    if (hx1) *hx1 = x;
+                    if (hy1) *hy1 = y;
+                    if (hx2) *hx2 = x + 1;
+                    if (hy2) *hy2 = y;
                     return 1;
                 }
             }
@@ -201,9 +205,12 @@ static int findHint(int* hx, int* hy) {
                 swapCandies(x, y, x, y + 1);
                 int m = findMatches();
                 swapCandies(x, y, x, y + 1);
+                memset(toRemove, 0, sizeof(toRemove));
                 if (m > 0) {
-                    if (hx) *hx = x;
-                    if (hy) *hy = y;
+                    if (hx1) *hx1 = x;
+                    if (hy1) *hy1 = y;
+                    if (hx2) *hx2 = x;
+                    if (hy2) *hy2 = y + 1;
                     return 1;
                 }
             }
@@ -331,10 +338,12 @@ static void renderBoard(SDL_Renderer* renderer) {
         SDL_RenderDrawRect(renderer, &sel);
     }
 
-    if (hintX >= 0 && hintY >= 0 && gameState == STATE_IDLE) {
-        SDL_Rect h = {hintX * TILE_SIZE, hintY * TILE_SIZE, TILE_SIZE, TILE_SIZE};
+    if (hintX1 >= 0 && hintY1 >= 0 && hintX2 >= 0 && hintY2 >= 0 && gameState == STATE_IDLE) {
+        SDL_Rect h1 = {hintX1 * TILE_SIZE, hintY1 * TILE_SIZE, TILE_SIZE, TILE_SIZE};
+        SDL_Rect h2 = {hintX2 * TILE_SIZE, hintY2 * TILE_SIZE, TILE_SIZE, TILE_SIZE};
         SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
-        SDL_RenderDrawRect(renderer, &h);
+        SDL_RenderDrawRect(renderer, &h1);
+        SDL_RenderDrawRect(renderer, &h2);
     }
 
     renderScore(renderer);
@@ -361,18 +370,18 @@ static void handleInput(SDL_Event* e) {
     if (gameState == STATE_GAMEOVER && e->type == SDL_KEYDOWN && e->key.keysym.sym == SDLK_r) {
         score = 0;
         selectedX = selectedY = -1;
-        hintX = hintY = -1;
+        hintX1 = hintY1 = hintX2 = hintY2 = -1;
         initBoard();
         gameState = STATE_IDLE;
         return;
     }
     if (e->type == SDL_KEYDOWN && e->key.keysym.sym == SDLK_SPACE && gameState == STATE_IDLE) {
-        if (!findHint(&hintX, &hintY)) {
-            hintX = hintY = -1;
+        if (!findHint(&hintX1, &hintY1, &hintX2, &hintY2)) {
+            hintX1 = hintY1 = hintX2 = hintY2 = -1;
         }
     }
     if (e->type == SDL_MOUSEBUTTONDOWN && gameState == STATE_IDLE) {
-        hintX = hintY = -1;
+        hintX1 = hintY1 = hintX2 = hintY2 = -1;
         int x = e->button.x / TILE_SIZE;
         int y = e->button.y / TILE_SIZE;
         if (x >= 0 && x < GRID_SIZE && y >= 0 && y < GRID_SIZE) {
