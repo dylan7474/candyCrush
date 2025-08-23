@@ -6,6 +6,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
+#include <stdint.h>
 
 /* Game constants */
 #define GRID_SIZE 8
@@ -14,30 +16,7 @@
 #define WINDOW_WIDTH (GRID_SIZE * TILE_SIZE)
 #define WINDOW_HEIGHT (GRID_SIZE * TILE_SIZE + 80)
 
-/* Embedded asset placeholders generated via xxd -i */
-/* Silent WAV used for sound placeholders */
-static unsigned char sound_wav[] = {
-    0x52,0x49,0x46,0x46,0x26,0x00,0x00,0x00,0x57,0x41,0x56,0x45,0x66,0x6D,0x74,0x20,
-    0x10,0x00,0x00,0x00,0x01,0x00,0x01,0x00,0x40,0x1F,0x00,0x00,0x80,0x3E,0x00,0x00,
-    0x02,0x00,0x10,0x00,0x64,0x61,0x74,0x61,0x02,0x00,0x00,0x00,0x00,0x00
-};
-static unsigned int sound_wav_len = sizeof(sound_wav);
-
-/* Loading helpers */
-
-static Mix_Chunk* loadSoundFromMemory(const unsigned char* data, unsigned int len) {
-    SDL_RWops* rw = SDL_RWFromConstMem(data, len);
-    if (!rw) return NULL;
-    Mix_Chunk* c = Mix_LoadWAV_RW(rw, 1);
-    return c;
-}
-
-static Mix_Music* loadMusicFromMemory(const unsigned char* data, unsigned int len) {
-    SDL_RWops* rw = SDL_RWFromConstMem(data, len);
-    if (!rw) return NULL;
-    Mix_Music* m = Mix_LoadMUS_RW(rw, 1);
-    return m;
-}
+/* Audio is generated procedurally at runtime */
 
 
 static SDL_Texture* createCandyTexture(SDL_Renderer* renderer) {
@@ -112,7 +91,27 @@ static SDL_Texture* candyTexture = NULL;
 static Mix_Chunk* sndSwap = NULL;
 static Mix_Chunk* sndInvalid = NULL;
 static Mix_Chunk* sndLand = NULL;
-static Mix_Music* music = NULL;
+static Mix_Chunk* sndMusic = NULL;
+
+static Mix_Chunk* generateTone(int freq, int ms) {
+    int sampleRate = 44100;
+    int channels = 2;
+    int samples = sampleRate * ms / 1000;
+    int16_t* buffer = malloc(samples * channels * sizeof(int16_t));
+    if (!buffer) return NULL;
+    for (int i = 0; i < samples; ++i) {
+        double t = (double)i / sampleRate;
+        int16_t sample = (int16_t)(3000 * sin(2.0 * 3.14159265358979323846 * freq * t));
+        for (int c = 0; c < channels; ++c) buffer[i*channels + c] = sample;
+    }
+    Mix_Chunk* chunk = malloc(sizeof(Mix_Chunk));
+    if (!chunk) { free(buffer); return NULL; }
+    chunk->allocated = 1;
+    chunk->abuf = (Uint8*)buffer;
+    chunk->alen = samples * channels * sizeof(int16_t);
+    chunk->volume = MIX_MAX_VOLUME;
+    return chunk;
+}
 
 static void swapCandies(int x1, int y1, int x2, int y2) {
     int tmp = board[y1][x1];
@@ -451,11 +450,11 @@ int main(int argc, char** argv) {
     }
 
     candyTexture = createCandyTexture(renderer);
-    sndSwap = loadSoundFromMemory(sound_wav, sound_wav_len);
-    sndInvalid = loadSoundFromMemory(sound_wav, sound_wav_len);
-    sndLand = loadSoundFromMemory(sound_wav, sound_wav_len);
-    music = loadMusicFromMemory(sound_wav, sound_wav_len);
-    if (music) Mix_PlayMusic(music, -1);
+    sndSwap = generateTone(600, 100);
+    sndInvalid = generateTone(200, 200);
+    sndLand = generateTone(400, 100);
+    sndMusic = generateTone(100, 1000);
+    if (sndMusic) Mix_PlayChannel(-1, sndMusic, -1);
     font = TTF_OpenFont("DejaVuSans.ttf", 24);
     if (!font) {
         fprintf(stderr, "Failed to load font: %s\n", TTF_GetError());
@@ -479,7 +478,7 @@ int main(int argc, char** argv) {
         SDL_Delay(16);
     }
 
-    if (music) Mix_FreeMusic(music);
+    if (sndMusic) Mix_FreeChunk(sndMusic);
     if (sndSwap) Mix_FreeChunk(sndSwap);
     if (sndInvalid) Mix_FreeChunk(sndInvalid);
     if (sndLand) Mix_FreeChunk(sndLand);
