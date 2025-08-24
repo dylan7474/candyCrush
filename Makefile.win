@@ -15,7 +15,7 @@ CFLAGS = -O2 -Wall -Wextra -std=c11 \
 # Link SDL libraries statically so the executable does not require
 # shipping the SDL2 DLLs alongside the game.
 # Windows system libraries required when statically linking SDL2
-WINLIBS = -lsetupapi -limm32 -lwinmm -lole32 -loleaut32 -lversion -lgdi32 -luser32
+WINLIBS = -lsetupapi -limm32 -lwinmm -lole32 -loleaut32 -lversion -lgdi32 -luser32 -lrpcrt4
 
 LDFLAGS = -static \
 -L$(SDL2_DIR)/lib \
