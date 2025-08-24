@@ -1,15 +1,35 @@
-CC=x86_64-w64-mingw32-gcc
-CFLAGS=`x86_64-w64-mingw32-sdl2-config --cflags` -Wall -Wextra -std=c11
-LDFLAGS=`x86_64-w64-mingw32-sdl2-config --libs` -lSDL2_image -lSDL2_mixer -lSDL2_ttf
-TARGET=candycrush.exe
+CC = x86_64-w64-mingw32-gcc
 
-all: $(TARGET)
+# Paths to SDL2 libraries (adjust as needed)
+SDL2_DIR ?= C:/SDL2
+SDL2_IMAGE_DIR ?= C:/SDL2_image
+SDL2_MIXER_DIR ?= C:/SDL2_mixer
+SDL2_TTF_DIR ?= C:/SDL2_ttf
 
-$(TARGET): main.o
-	$(CC) main.o -o $(TARGET) $(LDFLAGS)
+CFLAGS = -O2 -Wall -Wextra -std=c11 \
+-I$(SDL2_DIR)/include \
+-I$(SDL2_IMAGE_DIR)/include \
+-I$(SDL2_MIXER_DIR)/include \
+-I$(SDL2_TTF_DIR)/include
 
-main.o: main.c
-	$(CC) $(CFLAGS) -c main.c
+# Link SDL libraries statically so the executable does not require
+# shipping the SDL2 DLLs alongside the game.
+# Windows system libraries required when statically linking SDL2
+WINLIBS = -lsetupapi -limm32 -lwinmm -lole32 -loleaut32 -lversion -lgdi32 -luser32 -lrpcrt4
+
+LDFLAGS = -static \
+-L$(SDL2_DIR)/lib \
+-L$(SDL2_IMAGE_DIR)/lib \
+-L$(SDL2_MIXER_DIR)/lib \
+-L$(SDL2_TTF_DIR)/lib \
+-lmingw32 -lSDL2main -lSDL2 \
+-lSDL2_image -lSDL2_mixer -lSDL2_ttf -lm \
+$(WINLIBS)
+
+all: candycrush.exe
+
+candycrush.exe: main.c
+	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
 
 clean:
-	rm -f $(TARGET) *.o
+	del /f candycrush.exe
